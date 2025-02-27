@@ -11,7 +11,7 @@ parameter S_PROC_1 = 2'b01;
 parameter S_PROC_2 = 2'b10;
 parameter S_PROC_3 = 2'b11;
 
-parameter MAX = 27'b1111111111111111111111111111;
+parameter MAX = 27'b111111111111111111111111111;
 
 parameter MODE_1 = MAX >> 8;
 parameter MODE_2 = MAX >> 5;
