@@ -13,6 +13,7 @@ parameter S_PROC_2 = 3'b010; // 0.125 s
 parameter S_PROC_3 = 3'b011; // 0.25 s
 parameter S_PROC_4 = 3'b100; // 0.5s
 parameter S_PROC_5 = 3'b101; // 1s
+parameter S_PREV   = 3'b110; // call previous random number
 
 parameter MAX = 24'd10000000;	// #counter : 5000000 -> 1s
 								// max = 2s
@@ -24,7 +25,8 @@ parameter MODE_4 = MAX >> 2;
 parameter MODE_5 = MAX >> 1;
 
 // ===== Output Buffers =====
-logic [3:0] o_random_out_r, o_random_out_w, o_random_out_temp, o_random_out_prev;
+logic [3:0] o_random_out_r, o_random_out_w, o_random_out_temp;
+logic [3:0] o_random_out_prev_r, o_random_out_prev_w, o_random_out_prev_temp;
 
 // ===== Registers & Wires =====
 logic [2:0]  state_r, state_w;
@@ -33,13 +35,14 @@ logic [23:0] counter_r, counter_w;
 logic enable_signal;
 
 // ===== Output Assignments =====
-assign o_random_out = o_random_out_r;
+assign o_random_out = (state_r == S_PREV)? o_random_out_prev_r:o_random_out_r;
 
 // ===== Combinational Circuits =====
 
 always_comb begin
 	// Default Values
 	o_random_out_w = o_random_out_temp;
+	o_random_out_prev_w = o_random_out_prev_temp;
 	state_w        = state_r;
 	mode_w         = mode_r;
 	counter_w      = counter_r + 1;
@@ -119,19 +122,21 @@ always_comb begin
 end
 
 //instance of random_LFSR
-random_LFSR lfsr(.enable(enable_signal), .i_rst_n(i_rst_n), .o_random_out(o_random_out_temp));
+random_LFSR lfsr(.enable(enable_signal), .i_rst_n(i_rst_n), .o_random_out(o_random_out_temp), .o_random_out_prev(o_random_out_prev_temp));
 
 // ===== Sequential Circuits =====
 always_ff @(posedge i_clk or negedge i_rst_n) begin
 	// reset
 	if (!i_rst_n) begin
 		o_random_out_r <= 4'd0;
+		o_random_out_prev_r <= 4'd0;
 		state_r        <= S_IDLE;
 		mode_r         <= MODE_1;
 		counter_r      <= 24'd0;
 	end
 	else begin
 		o_random_out_r <= o_random_out_w;
+		o_random_out_prev_r <= o_random_out_prev_w;
 		state_r        <= state_w;
 		mode_r         <= mode_w;
 		counter_r      <= counter_w;
@@ -144,19 +149,22 @@ endmodule
 module random_LFSR( 
 	input enable,
 	input i_rst_n,
-	output [3:0] o_random_out
+	output [3:0] o_random_out,
+	output [3:0] o_random_out_prev
 );	
 
 // ===== Registers & Wires =====
-logic [3:0] rand_ff_w, rand_ff_r;
+logic [3:0] rand_ff_w, rand_ff_r, rand_ff_prev_w, rand_ff_prev_r;
 
 // ===== Output Assignments =====
 assign o_random_out = rand_ff_r;
+assign o_random_out_prev = rand_ff_prev_r;
 
 // ===== Combinational Circuits =====
 always_comb begin
 	// Default Values
 	rand_ff_w = rand_ff_r;
+	rand_ff_prev_w = rand_ff_prev_r;
 end
 
 // ===== Sequential Circuits =====
@@ -164,9 +172,11 @@ always_ff @(posedge enable or negedge i_rst_n) begin
 	// reset
 	if (!i_rst_n) begin
 		rand_ff_r <= 4'd3;
+		rand_ff_prev_r <= 4'd3;
 	end	
 
 	else begin
+		rand_ff_prev_r <= rand_ff_r; //the previous one
 		rand_ff_r[3] <= (rand_ff_w[0])^(rand_ff_w[3]);
 		rand_ff_r[2] <= rand_ff_w[3];
 		rand_ff_r[1] <= rand_ff_w[2];
