@@ -19,16 +19,17 @@ parameter MAX = 24'd10000000;	// #counter : 5000000 -> 1s
 parameter MODE_1 = MAX >> 5;
 parameter MODE_2 = MAX >> 4;
 parameter MODE_3 = MAX >> 3;
-parameter MODE_3 = MAX >> 2;
-parameter MODE_3 = MAX >> 1;
+parameter MODE_4 = MAX >> 2;
+parameter MODE_5 = MAX >> 1;
 
 // ===== Output Buffers =====
-logic [3:0] o_random_out_r, o_random_out_w;
+logic [3:0] o_random_out_r, o_random_out_w, o_random_out_temp;
 
 // ===== Registers & Wires =====
 logic [2:0]  state_r, state_w;
 logic [23:0] mode_r, mode_w;
 logic [23:0] counter_r, counter_w;
+logic enable_signal;
 
 // ===== Output Assignments =====
 assign o_random_out = o_random_out_r;
@@ -37,7 +38,7 @@ assign o_random_out = o_random_out_r;
 
 always_comb begin
 	// Default Values
-	o_random_out_w = o_random_out_r;
+	o_random_out_w = o_random_out_temp;
 	state_w        = state_r;
 	mode_w         = mode_r;
 	counter_w      = counter_r + 1;
@@ -113,11 +114,11 @@ always_comb begin
 	endcase
 
 	//LSFR
-	if (counter_r % mode_r == 0) begin
-		random_LSFR lsfr(.enable(1), .i_rst_n(i_rst_n), .o_rand(o_random_out_w));
-	end 
-
+	enable_signal = (counter_r%mode_r == 0);
 end
+
+//instance of random_LFSR
+random_LFSR lfsr(.enable(enable_signal), .i_rst_n(i_rst_n), .o_random_out(o_random_out_temp));
 
 // ===== Sequential Circuits =====
 always_ff @(posedge i_clk or negedge i_rst_n) begin
@@ -138,15 +139,15 @@ end
 
 endmodule
 
-
+//random number generator
 module random_LFSR( 
-	input enable
-	input i_rst_n
+	input enable,
+	input i_rst_n,
 	output [3:0] o_random_out
 );	
 
 // ===== Registers & Wires =====
-logic [3:0] rand_ff_w rand_ff_r
+logic [3:0] rand_ff_w, rand_ff_r;
 
 // ===== Output Assignments =====
 assign o_random_out = rand_ff_r;
@@ -154,7 +155,7 @@ assign o_random_out = rand_ff_r;
 // ===== Combinational Circuits =====
 always_comb begin
 	// Default Values
-	rand_ff_w = rand_ff_r
+	rand_ff_w = rand_ff_r;
 end
 
 // ===== Sequential Circuits =====
