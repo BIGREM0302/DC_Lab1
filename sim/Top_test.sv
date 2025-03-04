@@ -14,7 +14,7 @@ initial begin
 	$fsdbDumpvars(0, Top_test, "+mda");
 	i_clk = 0;
 	#1 $NicotbInit();
-	#120000000;
+	#1200000000;
 	$NicotbFinal();
 	$finish;
 end

@@ -2,6 +2,7 @@ module Top (
 	input        i_clk,
 	input        i_rst_n,
 	input        i_start,
+	input		 i_prev_random,
 	output [3:0] o_random_out
 );
 
@@ -23,7 +24,7 @@ parameter MODE_4 = MAX >> 2;
 parameter MODE_5 = MAX >> 1;
 
 // ===== Output Buffers =====
-logic [3:0] o_random_out_r, o_random_out_w, o_random_out_temp;
+logic [3:0] o_random_out_r, o_random_out_w, o_random_out_temp, o_random_out_prev;
 
 // ===== Registers & Wires =====
 logic [2:0]  state_r, state_w;
@@ -114,7 +115,7 @@ always_comb begin
 	endcase
 
 	//LSFR
-	enable_signal = (counter_r%mode_r == 0);
+	enable_signal = (state_r!=S_IDLE)&&(counter_r%mode_r == 0);
 end
 
 //instance of random_LFSR
