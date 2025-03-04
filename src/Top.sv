@@ -6,37 +6,34 @@ module Top (
 );
 
 // ===== States =====
-parameter S_IDLE   = 2'b00;
-parameter S_PROC_1 = 2'b01;
-parameter S_PROC_2 = 2'b10;
-parameter S_PROC_3 = 2'b11;
+parameter S_IDLE   = 3'b000; // idle state
+parameter S_PROC_1 = 3'b001; // 0.0625 s
+parameter S_PROC_2 = 3'b010; // 0.125 s
+parameter S_PROC_3 = 3'b011; // 0.25 s
+parameter S_PROC_4 = 3'b100; // 0.5s
+parameter S_PROC_5 = 3'b101; // 1s
 
-parameter MAX = 27'b111111111111111111111111111;
+parameter MAX = 24'd10000000;	// #counter : 5000000 -> 1s
+								// max = 2s
 
-parameter MODE_1 = MAX >> 8;
-parameter MODE_2 = MAX >> 5;
+parameter MODE_1 = MAX >> 5;
+parameter MODE_2 = MAX >> 4;
+parameter MODE_3 = MAX >> 3;
 parameter MODE_3 = MAX >> 2;
+parameter MODE_3 = MAX >> 1;
 
 // ===== Output Buffers =====
 logic [3:0] o_random_out_r, o_random_out_w;
 
 // ===== Registers & Wires =====
-logic [1:0]  state_r, state_w;
-logic [26:0] mode_r, mode_w;
-logic [26:0] counter_r, counter_w;
+logic [2:0]  state_r, state_w;
+logic [23:0] mode_r, mode_w;
+logic [23:0] counter_r, counter_w;
 
 // ===== Output Assignments =====
 assign o_random_out = o_random_out_r;
 
 // ===== Combinational Circuits =====
-
-function [3:0] random_LFSR;
-    input [3:0] lfsr_in;
-    begin
-        random_LFSR = (lfsr_in >> 1) ^ (-(lfsr_in & 1) & 4'b1011);
-    end
-endfunction
-
 
 always_comb begin
 	// Default Values
@@ -45,17 +42,13 @@ always_comb begin
 	mode_w         = mode_r;
 	counter_w      = counter_r + 1;
 
-	if (counter_r % mode_r == 0) begin
-		o_random_out_w = random_LSFR(o_random_out_r);
-	end
-
 	// FSM
 	case(state_r)
 		S_IDLE: begin
 			if (i_start) begin
 				state_w = S_PROC_1;
 				mode_w = MODE_1;
-				o_random_out_w = 4'd15;
+				o_random_out_w = o_random_out_r;
 			end
 		end
 
@@ -66,18 +59,19 @@ always_comb begin
 			end else if (counter_r >= MAX) begin
 				state_w = S_PROC_2;
 				mode_w = MODE_2;
-				counter_w = 27'd0;
-			end
+				counter_w = 24'd0;
+			end 
 		end
 
 		S_PROC_2: begin
 			if (i_start) begin
 				state_w = S_PROC_1;
 				mode_w = MODE_1;
+				counter_w = 24'd0;
 			end else if (counter_r >= MAX) begin
 				state_w = S_PROC_3;
 				mode_w = MODE_3;
-				counter_w = 27'd0;
+				counter_w = 24'd0;
 			end
 		end
 
@@ -85,13 +79,44 @@ always_comb begin
 			if (i_start) begin
 				state_w = S_PROC_1;
 				mode_w = MODE_1;
+				counter_w = 24'd0;
+			end else if (counter_r >= MAX) begin
+				state_w = S_PROC_4;
+				mode_w = MODE_4;
+				counter_w = 24'd0;
+			end
+		end
+
+		S_PROC_4: begin
+			if (i_start) begin
+				state_w = S_PROC_1;
+				mode_w = MODE_1;
+				counter_w = 24'd0;
+			end else if (counter_r >= MAX) begin
+				state_w = S_PROC_5;
+				mode_w = MODE_5;
+				counter_w = 24'd0;
+			end
+		end
+
+		S_PROC_5: begin
+			if (i_start) begin
+				state_w = S_PROC_1;
+				mode_w = MODE_1;
+				counter_w = 24'd0;
 			end else if (counter_r >= MAX) begin
 				state_w = S_IDLE;
 				mode_w = MODE_1;
-				counter_w = 27'd0;
+				counter_w = 24'd0;
 			end
 		end
 	endcase
+
+	//LSFR
+	if (counter_r % mode_r == 0) begin
+		random_LSFR lsfr(.enable(1), .i_rst_n(i_rst_n), .o_rand(o_random_out_w));
+	end 
+
 end
 
 // ===== Sequential Circuits =====
@@ -101,13 +126,49 @@ always_ff @(posedge i_clk or negedge i_rst_n) begin
 		o_random_out_r <= 4'd0;
 		state_r        <= S_IDLE;
 		mode_r         <= MODE_1;
-		counter_r      <= 27'd0;
+		counter_r      <= 24'd0;
 	end
 	else begin
 		o_random_out_r <= o_random_out_w;
 		state_r        <= state_w;
 		mode_r         <= mode_w;
 		counter_r      <= counter_w;
+	end
+end
+
+endmodule
+
+
+module random_LFSR( 
+	input enable
+	input i_rst_n
+	output [3:0] o_random_out
+);	
+
+// ===== Registers & Wires =====
+logic [3:0] rand_ff_w rand_ff_r
+
+// ===== Output Assignments =====
+assign o_random_out = rand_ff_r;
+
+// ===== Combinational Circuits =====
+always_comb begin
+	// Default Values
+	rand_ff_w = rand_ff_r
+end
+
+// ===== Sequential Circuits =====
+always_ff @(posedge enable or negedge i_rst_n) begin
+	// reset
+	if (!i_rst_n) begin
+		rand_ff_r <= 4'd3;
+	end	
+
+	else begin
+		rand_ff_r[3] <= (rand_ff_w[0])^(rand_ff_w[3]);
+		rand_ff_r[2] <= rand_ff_w[3];
+		rand_ff_r[1] <= rand_ff_w[2];
+		rand_ff_r[0] <= rand_ff_w[1];
 	end
 end
 
