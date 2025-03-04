@@ -58,7 +58,10 @@ always_comb begin
 		end
 
 		S_PROC_1: begin
-			if (i_start) begin
+			if (i_prev_random) begin
+				state_w = S_PREV;
+			end
+			else if (i_start) begin
 				state_w = S_PROC_1;
 				mode_w = MODE_1;
 			end else if (counter_r >= MAX) begin
@@ -69,7 +72,10 @@ always_comb begin
 		end
 
 		S_PROC_2: begin
-			if (i_start) begin
+			if (i_prev_random) begin
+				state_w = S_PREV;
+			end
+			else if (i_start) begin
 				state_w = S_PROC_1;
 				mode_w = MODE_1;
 				counter_w = 24'd0;
@@ -81,7 +87,10 @@ always_comb begin
 		end
 
 		S_PROC_3: begin
-			if (i_start) begin
+			if (i_prev_random) begin
+				state_w = S_PREV;
+			end
+			else if (i_start) begin
 				state_w = S_PROC_1;
 				mode_w = MODE_1;
 				counter_w = 24'd0;
@@ -93,7 +102,10 @@ always_comb begin
 		end
 
 		S_PROC_4: begin
-			if (i_start) begin
+			if (i_prev_random) begin
+				state_w = S_PREV;
+			end
+			else if (i_start) begin
 				state_w = S_PROC_1;
 				mode_w = MODE_1;
 				counter_w = 24'd0;
@@ -105,7 +117,10 @@ always_comb begin
 		end
 
 		S_PROC_5: begin
-			if (i_start) begin
+			if (i_prev_random) begin
+				state_w = S_PREV;
+			end
+			else if (i_start) begin
 				state_w = S_PROC_1;
 				mode_w = MODE_1;
 				counter_w = 24'd0;
@@ -115,10 +130,18 @@ always_comb begin
 				counter_w = 24'd0;
 			end
 		end
+
+		S_PREV: begin
+			if(i_start) begin
+				state_w = S_PROC_1;
+				mode_w = MODE_1;
+				o_random_out_w = o_random_out_r;
+			end
+		end
 	endcase
 
 	//LSFR
-	enable_signal = (state_r!=S_IDLE)&&(counter_r%mode_r == 0);
+	enable_signal = (state_r!=S_IDLE)&&(state_r!=S_PREV)&&(counter_r%mode_r == 0);
 end
 
 //instance of random_LFSR
