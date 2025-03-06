@@ -174,7 +174,7 @@ always_ff @(posedge i_clk or negedge i_rst_n) begin
 		state_r        <= S_IDLE;
 		past_state_r <= S_IDLE;
 		mode_r         <= MODE_1;
-		counter_r      <= 24'd0;
+		counter_r      <= 27'd0;
 	end
 	else begin
 		if(enable_signal == 1)begin
