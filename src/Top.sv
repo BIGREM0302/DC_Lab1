@@ -185,6 +185,11 @@ always_comb begin
 				mode_w = MODE_1;
 				counter_w = 27'd0;
 			end
+
+			else begin
+				counter_w = counter_r;
+			end
+			
 		end
 
 		S_CATCH: begin
@@ -203,6 +208,10 @@ always_comb begin
 				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
 				counter_w = 27'd0;
+			end
+
+			else begin
+				counter_w = counter_r;
 			end
 		end
 	endcase
