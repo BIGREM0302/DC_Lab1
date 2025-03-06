@@ -17,7 +17,7 @@ parameter S_PROC_5 = 3'b101; // 1s
 parameter S_PREV   = 3'b110; // call previous random number
 parameter S_CATCH  = 3'b111; // catch number present now
 
-parameter MAX = 27'd100000000;	// #counter : 50000000 -> 1s , max = 2s
+parameter MAX = 27'b100000000000000000000000000;	// #counter : 50000000 -> 1s , max = 2s
 
 parameter MODE_1 = MAX >> 5;
 parameter MODE_2 = MAX >> 4;
@@ -251,7 +251,7 @@ end
 endmodule
 
 //random number generator
-module random_LFSR( 
+module random_LFSR(
 	input enable,
 	input i_rst_n,
 	output [3:0] o_random_out
