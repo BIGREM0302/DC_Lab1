@@ -168,11 +168,13 @@ always_comb begin
 
 		S_PREV: begin
 			if(i_prev_random) begin
-				state_w = past_state_r; //直接回去剛剛的state裡面 繼續用剛剛數的結果
+				state_w = past_state_r; //直接回去剛剛的state裡面 繼續用剛剛數的結果	
+				counter_w = counter_r;
 			end 
 
 			else if (i_catch) begin
 				state_w = S_CATCH;
+				counter_w = counter_r;
 			end
 
 			else if(i_start)begin
@@ -186,10 +188,12 @@ always_comb begin
 		S_CATCH: begin
 			if(i_prev_random) begin
 				state_w = S_PREV; //直接回去剛剛的state裡面 繼續用剛剛數的結果
+				counter_w = counter_r;
 			end 
 
 			else if (i_catch) begin
 				state_w = past_state_r;
+				counter_w = counter_r;
 			end
 
 			else if(i_start)begin
