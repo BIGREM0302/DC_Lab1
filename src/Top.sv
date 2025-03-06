@@ -59,6 +59,9 @@ always_comb begin
 				mode_w = MODE_1;
 				o_random_out_prev_w = o_random_out_temp;
 			end
+			if (i_prev_random) begin
+				state_w = S_PREV;
+			end
 		end
 
 		S_PROC_1: begin
@@ -217,6 +220,11 @@ always_ff @(posedge enable or negedge i_rst_n) begin
 	if (!i_rst_n) begin
 		rand_ff_r <= 4'd3;
 	end	
+
+	else if(|rand_ff_r==0) begin
+		rand_ff_r <= 4'd12;
+
+	end
 
 	else begin
 		rand_ff_r[3] <= (rand_ff_w[0])^(rand_ff_w[3]);
