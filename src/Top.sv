@@ -196,8 +196,8 @@ endmodule
 module random_LFSR( 
 	input enable,
 	input i_rst_n,
-	output [3:0] o_random_out,
-);	
+	output [3:0] o_random_out
+);
 
 // ===== Registers & Wires =====
 logic [3:0] rand_ff_w, rand_ff_r;
