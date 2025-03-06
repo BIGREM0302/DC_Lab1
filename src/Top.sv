@@ -15,8 +15,7 @@ parameter S_PROC_4 = 3'b100; // 0.5s
 parameter S_PROC_5 = 3'b101; // 1s
 parameter S_PREV   = 3'b110; // call previous random number
 
-parameter MAX = 24'd10000000;	// #counter : 5000000 -> 1s
-								// max = 2s
+parameter MAX = 27'd100000000;	// #counter : 50000000 -> 1s , max = 2s
 
 parameter MODE_1 = MAX >> 5;
 parameter MODE_2 = MAX >> 4;
@@ -25,14 +24,16 @@ parameter MODE_4 = MAX >> 2;
 parameter MODE_5 = MAX >> 1;
 
 // ===== Output Buffers =====
-logic [3:0] o_random_out_r, o_random_out_w, o_random_out_temp;
-logic [3:0] o_random_out_prev_r, o_random_out_prev_w, o_random_out_prev_temp;
+logic [3:0] o_random_out_r, o_random_out_w,o_random_out_temp;
+logic [3:0] o_random_out_prev_r, o_random_out_prev_w;
 
 // ===== Registers & Wires =====
 logic [2:0]  state_r, state_w;
-logic [23:0] mode_r, mode_w;
-logic [23:0] counter_r, counter_w;
+logic [2:0]  past_state_r, past_state_w;
+logic [26:0] mode_r, mode_w;
+logic [26:0] counter_r, counter_w;
 logic enable_signal;
+
 
 // ===== Output Assignments =====
 assign o_random_out = (state_r == S_PREV)? o_random_out_prev_r:o_random_out_r;
@@ -41,19 +42,22 @@ assign o_random_out = (state_r == S_PREV)? o_random_out_prev_r:o_random_out_r;
 
 always_comb begin
 	// Default Values
-	o_random_out_w = o_random_out_temp;
-	o_random_out_prev_w = o_random_out_prev_temp;
+	o_random_out_w = o_random_out_r;
+	o_random_out_prev_w = o_random_out_prev_r;
 	state_w        = state_r;
+	past_state_w =  past_state_r;
 	mode_w         = mode_r;
 	counter_w      = counter_r + 1;
 
 	// FSM
 	case(state_r)
+
 		S_IDLE: begin
 			if (i_start) begin
 				state_w = S_PROC_1;
+				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
-				o_random_out_w = o_random_out_r;
+				o_random_out_prev_w = o_random_out_temp;
 			end
 		end
 
@@ -63,11 +67,13 @@ always_comb begin
 			end
 			else if (i_start) begin
 				state_w = S_PROC_1;
+				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
 			end else if (counter_r >= MAX) begin
 				state_w = S_PROC_2;
+				past_state_w = S_PROC_2;
 				mode_w = MODE_2;
-				counter_w = 24'd0;
+				counter_w = 27'd0;
 			end 
 		end
 
@@ -77,12 +83,14 @@ always_comb begin
 			end
 			else if (i_start) begin
 				state_w = S_PROC_1;
+				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
-				counter_w = 24'd0;
+				counter_w = 27'd0;
 			end else if (counter_r >= MAX) begin
 				state_w = S_PROC_3;
 				mode_w = MODE_3;
-				counter_w = 24'd0;
+				past_state_w = S_PROC_3;
+				counter_w = 27'd0;
 			end
 		end
 
@@ -92,12 +100,14 @@ always_comb begin
 			end
 			else if (i_start) begin
 				state_w = S_PROC_1;
+				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
-				counter_w = 24'd0;
+				counter_w = 27'd0;
 			end else if (counter_r >= MAX) begin
 				state_w = S_PROC_4;
 				mode_w = MODE_4;
-				counter_w = 24'd0;
+				past_state_w = S_PROC_4;
+				counter_w = 27'd0;
 			end
 		end
 
@@ -107,12 +117,14 @@ always_comb begin
 			end
 			else if (i_start) begin
 				state_w = S_PROC_1;
+				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
-				counter_w = 24'd0;
+				counter_w = 27'd0;
 			end else if (counter_r >= MAX) begin
 				state_w = S_PROC_5;
+				past_state_w = S_PROC_5;
 				mode_w = MODE_5;
-				counter_w = 24'd0;
+				counter_w = 27'd0;
 			end
 		end
 
@@ -122,45 +134,57 @@ always_comb begin
 			end
 			else if (i_start) begin
 				state_w = S_PROC_1;
+				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
-				counter_w = 24'd0;
+				counter_w = 27'd0;
 			end else if (counter_r >= MAX) begin
 				state_w = S_IDLE;
+				past_state_w = S_IDLE;
 				mode_w = MODE_1;
-				counter_w = 24'd0;
+				counter_w = 27'd0;
 			end
 		end
 
 		S_PREV: begin
-			if(i_start) begin
+			if(i_prev_random) begin
+				state_w = past_state_r; //直接回去剛剛的state裡面 繼續用剛剛數的結果
+			end 
+			else if(i_start)begin
 				state_w = S_PROC_1;
+				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
-				o_random_out_w = o_random_out_r;
+				counter_w = 27'd0;
 			end
 		end
 	endcase
 
 	//LSFR
-	enable_signal = (state_r!=S_IDLE)&&(state_r!=S_PREV)&&(counter_r%mode_r == 0);
+	enable_signal = (state_r!=S_IDLE)&&(state_r!=S_PREV)&&(counter_r%mode_r == 0); //改這裡的modulo就好
 end
 
 //instance of random_LFSR
-random_LFSR lfsr(.enable(enable_signal), .i_rst_n(i_rst_n), .o_random_out(o_random_out_temp), .o_random_out_prev(o_random_out_prev_temp));
+random_LFSR lfsr(.enable(enable_signal), .i_rst_n(i_rst_n), .o_random_out(o_random_out_temp));
 
 // ===== Sequential Circuits =====
 always_ff @(posedge i_clk or negedge i_rst_n) begin
 	// reset
 	if (!i_rst_n) begin
 		o_random_out_r <= 4'd0;
-		o_random_out_prev_r <= 4'd0;
+		o_random_out_prev_r <= 4'd0; //這裡可能要改
 		state_r        <= S_IDLE;
+		past_state_r <= S_IDLE;
 		mode_r         <= MODE_1;
 		counter_r      <= 24'd0;
 	end
 	else begin
-		o_random_out_r <= o_random_out_w;
+		if(enable_signal == 1)begin
+			o_random_out_r <= o_random_out_temp;
+		end else begin
+			o_random_out_r <= o_random_out_w;
+		end
 		o_random_out_prev_r <= o_random_out_prev_w;
 		state_r        <= state_w;
+		past_state_r <= past_state_w;
 		mode_r         <= mode_w;
 		counter_r      <= counter_w;
 	end
@@ -173,21 +197,18 @@ module random_LFSR(
 	input enable,
 	input i_rst_n,
 	output [3:0] o_random_out,
-	output [3:0] o_random_out_prev
 );	
 
 // ===== Registers & Wires =====
-logic [3:0] rand_ff_w, rand_ff_r, rand_ff_prev_w, rand_ff_prev_r;
+logic [3:0] rand_ff_w, rand_ff_r;
 
 // ===== Output Assignments =====
 assign o_random_out = rand_ff_r;
-assign o_random_out_prev = rand_ff_prev_r;
 
 // ===== Combinational Circuits =====
 always_comb begin
 	// Default Values
 	rand_ff_w = rand_ff_r;
-	rand_ff_prev_w = rand_ff_prev_r;
 end
 
 // ===== Sequential Circuits =====
@@ -195,11 +216,9 @@ always_ff @(posedge enable or negedge i_rst_n) begin
 	// reset
 	if (!i_rst_n) begin
 		rand_ff_r <= 4'd3;
-		rand_ff_prev_r <= 4'd3;
 	end	
 
 	else begin
-		rand_ff_prev_r <= rand_ff_r; //the previous one
 		rand_ff_r[3] <= (rand_ff_w[0])^(rand_ff_w[3]);
 		rand_ff_r[2] <= rand_ff_w[3];
 		rand_ff_r[1] <= rand_ff_w[2];
