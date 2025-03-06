@@ -60,6 +60,7 @@ always_comb begin
 				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
 				o_random_out_prev_w = o_random_out_temp;
+				counter_w = 27'd0;
 			end
 			if (i_prev_random) begin
 				state_w = S_PREV;
@@ -74,6 +75,7 @@ always_comb begin
 				state_w = S_PROC_1;
 				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
+				counter_w = 27'd0;
 			end else if (i_catch) begin
 				state_w = S_CATCH;
 
