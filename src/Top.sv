@@ -3,6 +3,7 @@ module Top (
 	input        i_rst_n,
 	input        i_start,
 	input		 i_prev_random,
+	input        i_catch,
 	output [3:0] o_random_out
 );
 
@@ -14,6 +15,7 @@ parameter S_PROC_3 = 3'b011; // 0.25 s
 parameter S_PROC_4 = 3'b100; // 0.5s
 parameter S_PROC_5 = 3'b101; // 1s
 parameter S_PREV   = 3'b110; // call previous random number
+parameter S_CATCH  = 3'b111; // catch number present now
 
 parameter MAX = 27'd100000000;	// #counter : 50000000 -> 1s , max = 2s
 
@@ -72,6 +74,9 @@ always_comb begin
 				state_w = S_PROC_1;
 				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
+			end else if (i_catch) begin
+				state_w = S_CATCH;
+
 			end else if (counter_r >= MAX) begin
 				state_w = S_PROC_2;
 				past_state_w = S_PROC_2;
@@ -89,6 +94,10 @@ always_comb begin
 				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
 				counter_w = 27'd0;
+
+			end else if (i_catch) begin
+				state_w = S_CATCH;
+
 			end else if (counter_r >= MAX) begin
 				state_w = S_PROC_3;
 				mode_w = MODE_3;
@@ -106,6 +115,9 @@ always_comb begin
 				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
 				counter_w = 27'd0;
+			end else if (i_catch) begin
+				state_w = S_CATCH;
+
 			end else if (counter_r >= MAX) begin
 				state_w = S_PROC_4;
 				mode_w = MODE_4;
@@ -123,6 +135,9 @@ always_comb begin
 				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
 				counter_w = 27'd0;
+			end else if (i_catch) begin
+				state_w = S_CATCH;
+
 			end else if (counter_r >= MAX) begin
 				state_w = S_PROC_5;
 				past_state_w = S_PROC_5;
@@ -140,6 +155,9 @@ always_comb begin
 				past_state_w = S_PROC_1;
 				mode_w = MODE_1;
 				counter_w = 27'd0;
+			end else if (i_catch) begin
+				state_w = S_CATCH;
+
 			end else if (counter_r >= MAX) begin
 				state_w = S_IDLE;
 				past_state_w = S_IDLE;
@@ -152,6 +170,28 @@ always_comb begin
 			if(i_prev_random) begin
 				state_w = past_state_r; //直接回去剛剛的state裡面 繼續用剛剛數的結果
 			end 
+
+			else if (i_catch) begin
+				state_w = S_CATCH;
+			end
+
+			else if(i_start)begin
+				state_w = S_PROC_1;
+				past_state_w = S_PROC_1;
+				mode_w = MODE_1;
+				counter_w = 27'd0;
+			end
+		end
+
+		S_CATCH: begin
+			if(i_prev_random) begin
+				state_w = S_PREV; //直接回去剛剛的state裡面 繼續用剛剛數的結果
+			end 
+
+			else if (i_catch) begin
+				state_w = past_state_r;
+			end
+
 			else if(i_start)begin
 				state_w = S_PROC_1;
 				past_state_w = S_PROC_1;
@@ -162,7 +202,7 @@ always_comb begin
 	endcase
 
 	//LSFR
-	enable_signal = (state_r!=S_IDLE)&&(state_r!=S_PREV)&&(counter_r%mode_r == 0); //改這裡的modulo就好
+	enable_signal = (state_r!=S_CATCH)&&(state_r!=S_IDLE)&&(state_r!=S_PREV)&&(counter_r%mode_r == 0); //改這裡的modulo就好
 end
 
 //instance of random_LFSR
