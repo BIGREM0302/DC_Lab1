@@ -52,7 +52,7 @@ always_comb begin
 	mode_w              = mode_r;
 	counter_w           = counter_r + 1;
 
-	cur_w               = $unsigned(counter_r >> mode_r)
+	cur_w               = $unsigned(counter_r >> mode_r);
 
 	// FSM
 	case(state_r)
