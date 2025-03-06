@@ -17,13 +17,13 @@ parameter S_PROC_5 = 3'b101; // 1s
 parameter S_PREV   = 3'b110; // call previous random number
 parameter S_CATCH  = 3'b111; // catch number present now
 
-parameter MAX = 27'd100000000;	// #counter : 50000000 -> 1s , max = 2s
+parameter MAX = 27'b100000000000000000000000000;	// #counter : 50000000 -> 1s , max = 2s
 
-parameter MODE_1 = MAX >> 5;
-parameter MODE_2 = MAX >> 4;
-parameter MODE_3 = MAX >> 3;
-parameter MODE_4 = MAX >> 2;
-parameter MODE_5 = MAX >> 1;
+parameter MODE_1 = 22;
+parameter MODE_2 = 23;
+parameter MODE_3 = 24;
+parameter MODE_4 = 25;
+parameter MODE_5 = 26;
 
 // ===== Output Buffers =====
 logic [3:0] o_random_out_r, o_random_out_w,o_random_out_temp;
@@ -34,7 +34,8 @@ logic [2:0]  state_r, state_w;
 logic [2:0]  past_state_r, past_state_w;
 logic [26:0] mode_r, mode_w;
 logic [26:0] counter_r, counter_w;
-logic enable_signal;
+logic [26:0] cur_r, cur_w;
+logic        enable_signal;
 
 
 // ===== Output Assignments =====
@@ -44,16 +45,17 @@ assign o_random_out = (state_r == S_PREV)? o_random_out_prev_r:o_random_out_r;
 
 always_comb begin
 	// Default Values
-	o_random_out_w = o_random_out_r;
+	o_random_out_w      = o_random_out_r;
 	o_random_out_prev_w = o_random_out_prev_r;
-	state_w        = state_r;
-	past_state_w =  past_state_r;
-	mode_w         = mode_r;
-	counter_w      = counter_r + 1;
+	state_w             = state_r;
+	past_state_w        =  past_state_r;
+	mode_w              = mode_r;
+	counter_w           = counter_r + 1;
+
+	cur_w               = $unsigned(counter_r >> mode_r)
 
 	// FSM
 	case(state_r)
-
 		S_IDLE: begin
 			if (i_start) begin
 				state_w = S_PROC_1;
@@ -170,7 +172,7 @@ always_comb begin
 
 		S_PREV: begin
 			if(i_prev_random) begin
-				state_w = past_state_r; //直接回去剛剛的state裡面 繼續用剛剛數的結果	
+				state_w = past_state_r; //直接回去剛剛的state裡面 繼續用剛剛數的結果
 				counter_w = counter_r;
 			end 
 
@@ -189,14 +191,13 @@ always_comb begin
 			else begin
 				counter_w = counter_r;
 			end
-			
 		end
 
 		S_CATCH: begin
 			if(i_prev_random) begin
 				state_w = S_PREV; //直接回去剛剛的state裡面 繼續用剛剛數的結果
 				counter_w = counter_r;
-			end 
+			end
 
 			else if (i_catch) begin
 				state_w = past_state_r;
@@ -217,7 +218,7 @@ always_comb begin
 	endcase
 
 	//LSFR
-	enable_signal = (state_r!=S_CATCH)&&(state_r!=S_IDLE)&&(state_r!=S_PREV)&&(counter_r%mode_r == 0); //改這裡的modulo就好
+	enable_signal = (state_r != S_CATCH) && (state_r != S_IDLE) && (state_r != S_PREV) && (cur_w != cur_r); //改這裡的modulo就好
 end
 
 //instance of random_LFSR
@@ -225,38 +226,38 @@ random_LFSR lfsr(.enable(enable_signal), .i_rst_n(i_rst_n), .o_random_out(o_rand
 
 // ===== Sequential Circuits =====
 always_ff @(posedge i_clk or negedge i_rst_n) begin
-	// reset
+// reset
 	if (!i_rst_n) begin
-		o_random_out_r <= 4'd0;
+		o_random_out_r      <= 4'd0;
 		o_random_out_prev_r <= 4'd0; //這裡可能要改
-		state_r        <= S_IDLE;
-		past_state_r <= S_IDLE;
-		mode_r         <= MODE_1;
-		counter_r      <= 27'd0;
+		state_r             <= S_IDLE;
+		past_state_r        <= S_IDLE;
+		mode_r              <= MODE_1;
+		counter_r           <= 27'd0;
 	end
 	else begin
-		if(enable_signal == 1)begin
+		if (enable_signal == 1) begin
 			o_random_out_r <= o_random_out_temp;
 		end else begin
 			o_random_out_r <= o_random_out_w;
 		end
 		o_random_out_prev_r <= o_random_out_prev_w;
-		state_r        <= state_w;
-		past_state_r <= past_state_w;
-		mode_r         <= mode_w;
-		counter_r      <= counter_w;
+		state_r             <= state_w;
+		past_state_r        <= past_state_w;
+		mode_r              <= mode_w;
+		counter_r           <= counter_w;
+		cur_r               <= cur_w;
 	end
 end
 
 endmodule
 
 //random number generator
-module random_LFSR( 
+module random_LFSR(
 	input enable,
 	input i_rst_n,
 	output [3:0] o_random_out
 );
-
 // ===== Registers & Wires =====
 logic [3:0] rand_ff_w, rand_ff_r;
 
@@ -274,7 +275,7 @@ always_ff @(posedge enable or negedge i_rst_n) begin
 	// reset
 	if (!i_rst_n) begin
 		rand_ff_r <= 4'd3;
-	end	
+	end
 
 	else if(|rand_ff_r==0) begin
 		rand_ff_r <= 4'd12;
